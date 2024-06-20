@@ -1870,7 +1870,7 @@ static void rtpengine_rpc_add_socket(rpc_t *rpc, void *ctx)
 {
 	void *vh;
 	str rtpp_url;
-	unsigned int set_id = setid_default, weight = 0;
+	unsigned int set_id = setid_default, weight = 1;
 	struct rtpp_set *rtpp_list;
 
 	if (rpc->scan(ctx, "S*dd", &rtpp_url, &weight, &set_id) < 1) {
