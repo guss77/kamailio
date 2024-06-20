@@ -1863,6 +1863,84 @@ static void rtpengine_rpc_enable(rpc_t *rpc, void *ctx)
 		rpc->struct_add(vh, "s", "status", "enable");
 	else
 		rpc->struct_add(vh, "s", "status", "fail");
+	rpc->struct_add(vh, "b", "success", 1);
+}
+
+static void rtpengine_rpc_add_socket(rpc_t *rpc, void *ctx)
+{
+	void *vh;
+	str rtpp_url;
+	unsigned int set_id = setid_default, weight = 0;
+	struct rtpp_set *rtpp_list;
+
+	if (rpc->scan(ctx, "S*dd", &rtpp_url, &weight, &set_id) < 1) {
+		rpc->fault(ctx, 500, "Incorrect number of parameters");
+		return;
+	}
+
+	rtpp_list = get_rtpp_set(set_id);
+	if (!rtpp_list) {
+		rpc->fault(ctx, 500, "Failed to find/create RTPEngine set");
+		return;
+	}
+
+	if (add_rtpengine_socks(rtpp_list, rtpp_url.s, weight, 0, 0, 0) != 0) {
+		rpc->fault(ctx, 500, "Server error");
+		return;
+	}
+
+	LM_INFO("RTPEngine %s added to RTPEngine set %u\n", rtpp_url.s, set_id);
+
+	if(rpc->add(ctx, "{", &vh) < 0) {
+		rpc->fault(ctx, 500, "Server error");
+		return;
+	}
+	rpc->struct_add(vh, "b", "status", 1);
+}
+
+static int rtpengine_iter_cb_remove_socket(
+	struct rtpp_node *pnode, struct rtpp_set *rtpp_list, void *v)
+{
+	/* unlink pnode */
+	if (rtpp_list->rn_first == pnode) {
+		rtpp_list->rn_first = pnode->rn_next;
+	} else {
+		for (struct rtpp_node* p = rtpp_list->rn_first; p != rtpp_list->rn_last && p->rn_next != NULL; p = p->rn_next) {
+			if (p->rn_next == pnode) {
+				p->rn_next = pnode->rn_next;
+				if (p->rn_next == NULL) {
+					rtpp_list->rn_last = p;
+				}
+				break;
+			}
+		}
+	}
+	shm_free(pnode->rn_url.s);
+	shm_free(pnode);
+	return 0;
+}
+
+static void rtpengine_rpc_remove_socket(rpc_t *rpc, void *ctx)
+{
+	void *vh;
+	str rtpp_url;
+	int found;
+
+	if(rpc->scan(ctx, "S", &rtpp_url) < 1) {
+		rpc->fault(ctx, 500, "Not enough parameters");
+		return;
+	}
+
+	LM_DBG("Finding node to remove...\n");
+	found = rtpengine_rpc_iterate(
+		rpc, ctx, &rtpp_url, rtpengine_iter_cb_remove_socket, 0);
+
+	if(rpc->add(ctx, "{", &vh) < 0) {
+		rpc->fault(ctx, 500, "Server error");
+		return;
+	}
+
+	rpc->struct_add(vh, "b", "status", found != -1);
 }
 
 static int rtpengine_iter_cb_show(
@@ -1943,6 +2021,10 @@ static const char *rtpengine_rpc_show_doc[2] = {
 		"Get details about an rtpengine instance", 0};
 static const char *rtpengine_rpc_enable_doc[2] = {
 		"Enable or disable an rtpengine instance", 0};
+static const char *rtpengine_rpc_add_socket_doc[2] = {
+		"Add a new rtpengine instance. Parameters: [set_id], url, [weight]", 0};
+static const char *rtpengine_rpc_remove_socket_doc[2] = {
+		"Remove an existing rtpengine instance. Parameters: url", 0};
 static const char *rtpengine_rpc_get_hash_total_doc[2] = {
 		"Get total number of entries in hash table", 0};
 
@@ -1952,6 +2034,8 @@ rpc_export_t rtpengine_rpc[] = {
 		{"rtpengine.show", rtpengine_rpc_show, rtpengine_rpc_show_doc,
 				RET_ARRAY},
 		{"rtpengine.enable", rtpengine_rpc_enable, rtpengine_rpc_enable_doc, 0},
+		{"rtpengine.add", rtpengine_rpc_add_socket, rtpengine_rpc_add_socket_doc, 0},
+		{"rtpengine.remove", rtpengine_rpc_remove_socket, rtpengine_rpc_remove_socket_doc, 0},
 		{"rtpengine.get_hash_total", rtpengine_rpc_get_hash_total,
 				rtpengine_rpc_get_hash_total_doc, 0},
 		{0, 0, 0, 0}};
