@@ -1915,6 +1915,7 @@ static int rtpengine_iter_cb_remove_socket(
 			}
 		}
 	}
+	LM_INFO("RTPEngine %s removed from RTPEngine set %u\n", pnode->rn_url.s, rtpp_list->id_set);
 	shm_free(pnode->rn_url.s);
 	shm_free(pnode);
 	return 0;
