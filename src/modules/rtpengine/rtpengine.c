@@ -1891,6 +1891,13 @@ static void rtpengine_rpc_add_socket(rpc_t *rpc, void *ctx)
 		rpc->fault(ctx, 500, "Server error");
 		return;
 	}
+	
+	_rtpe_list_version->vernum += 1;
+	_rtpe_list_version->vertime = time(NULL);
+	if (build_rtpp_socks(1,1) != 0) {
+		rpc->fault(ctx, 500, "Server error");
+		return;
+	}
 
 	LM_INFO("RTPEngine %s added to RTPEngine set %u\n", rtpp_url.s, set_id);
 
