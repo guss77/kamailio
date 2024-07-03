@@ -1813,7 +1813,8 @@ static int rtpengine_iter_cb_enable(
 		if(rtpp_test_ping(crt_rtpp) == 0) {
 			crt_rtpp->rn_disabled = 0;
 			crt_rtpp->rn_recheck_ticks = RTPENGINE_MIN_RECHECK_TICKS;
-
+			LM_INFO("RTPEngine %s enabled in RTPEngine set %u\n", crt_rtpp->rn_url.s, rtpp_list->id_set);
+			
 			/* if ping fail, disable the rtpps but _not_ permanently*/
 		} else {
 			crt_rtpp->rn_recheck_ticks =
@@ -1821,12 +1822,14 @@ static int rtpengine_iter_cb_enable(
 					+ cfg_get(rtpengine, rtpengine_cfg, rtpengine_disable_tout);
 			crt_rtpp->rn_disabled = 1;
 			*flag = 2; /* return value to caller */
+			LM_INFO("RTPEngine %s failed to enable in RTPEngine set %u, will recheck\n", crt_rtpp->rn_url.s, rtpp_list->id_set);
 		}
 
 		/* do not ping when disable the rtpp; disable it permanenty */
 	} else {
 		crt_rtpp->rn_disabled = 1;
 		crt_rtpp->rn_recheck_ticks = RTPENGINE_MAX_RECHECK_TICKS;
+		LM_INFO("RTPEngine %s disabled in RTPEngine set %u\n", crt_rtpp->rn_url.s, rtpp_list->id_set);
 	}
 
 	return 0;
